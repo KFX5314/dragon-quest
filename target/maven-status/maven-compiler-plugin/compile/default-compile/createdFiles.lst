@@ -6,6 +6,5 @@ com\taller\patrones\CombatSimulatorApplication.class
 com\taller\patrones\infrastructure\combat\CombatEngine.class
 com\taller\patrones\domain\Attack.class
 com\taller\patrones\domain\Battle.class
-com\taller\patrones\infrastructure\combat\CombatEngine$1.class
 com\taller\patrones\domain\Character.class
 com\taller\patrones\application\BattleService$BattleStartResult.class
