@@ -14,7 +14,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class BattleController {
 
-    private final BattleService battleService = new BattleService();
+    private final BattleService battleService = new BattleService(); // BattleRepository ya es singleton
 
     @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> startBattle(@RequestBody(required = false) Map<String, String> body) {
@@ -45,18 +45,15 @@ public class BattleController {
      */
     @PostMapping("/start/external")
     public ResponseEntity<Map<String, Object>> startBattleFromExternal(@RequestBody Map<String, Object> body) {
-        String fighter1Name = (String) body.getOrDefault("fighter1_name", "Héroe");
-        int fighter1Hp = ((Number) body.getOrDefault("fighter1_hp", 150)).intValue();
-        int fighter1Atk = ((Number) body.getOrDefault("fighter1_atk", 25)).intValue();
-        String fighter2Name = (String) body.getOrDefault("fighter2_name", "Dragón");
-        int fighter2Hp = ((Number) body.getOrDefault("fighter2_hp", 120)).intValue();
-        int fighter2Atk = ((Number) body.getOrDefault("fighter2_atk", 30)).intValue();
+        // delegamos la conversión a un adaptador para no ensuciar el controller
+        Battle battle = ExternalBattleAdapter.toBattle(body);
 
         var result = battleService.startBattleFromExternal(
-                fighter1Name, fighter1Hp, fighter1Atk,
-                fighter2Name, fighter2Hp, fighter2Atk
+                battle.getPlayer().getName(), battle.getPlayer().getMaxHp(), battle.getPlayer().getAttack(),
+                battle.getEnemy().getName(), battle.getEnemy().getMaxHp(), battle.getEnemy().getAttack()
         );
-        Battle battle = result.battle();
+
+        battle = result.battle();
 
         return ResponseEntity.ok(Map.of(
                 "battleId", result.battleId(),

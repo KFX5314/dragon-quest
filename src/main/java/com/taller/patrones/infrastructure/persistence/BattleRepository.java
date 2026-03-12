@@ -13,7 +13,17 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class BattleRepository {
 
-    private static final Map<String, Battle> battles = new ConcurrentHashMap<>();
+    // implementa singleton para que toda la aplicación comparta la misma instancia
+    private static final BattleRepository INSTANCE = new BattleRepository();
+
+    private final Map<String, Battle> battles = new ConcurrentHashMap<>();
+
+    // constructor privado para impedir instanciación externa
+    private BattleRepository() { }
+
+    public static BattleRepository getInstance() {
+        return INSTANCE;
+    }
 
     public void save(String id, Battle battle) {
         battles.put(id, battle);
