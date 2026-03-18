@@ -5,6 +5,8 @@ import com.taller.patrones.domain.Battle;
 import com.taller.patrones.domain.Character;
 import com.taller.patrones.application.command.AttackBattleCommand;
 import com.taller.patrones.application.command.BattleCommand;
+import com.taller.patrones.application.composite.AttackUnit;
+import com.taller.patrones.application.composite.AttackUnitFactory;
 import com.taller.patrones.application.observer.AnalyticsDamageObserver;
 import com.taller.patrones.application.observer.AuditDamageObserver;
 import com.taller.patrones.application.observer.DamageEvent;
@@ -31,6 +33,7 @@ public class BattleService {
     private final BattleRepository battleRepository = BattleRepository.getInstance();
     private final DamageNotifier damageNotifier = new DamageNotifier();
     private final Map<String, Deque<BattleCommand>> commandHistory = new HashMap<>();
+    private final AttackUnitFactory attackUnitFactory = new AttackUnitFactory();
 
     public BattleService() {
         damageNotifier.subscribe(new AnalyticsDamageObserver());
@@ -38,7 +41,7 @@ public class BattleService {
         damageNotifier.subscribe(new RealtimeStatsObserver());
     }
 
-    public static final List<String> PLAYER_ATTACKS = List.of("TACKLE", "SLASH", "FIREBALL", "ICE_BEAM", "POISON_STING", "THUNDER", "METEORO");
+    public static final List<String> PLAYER_ATTACKS = List.of("TACKLE", "SLASH", "FIREBALL", "ICE_BEAM", "POISON_STING", "THUNDER", "METEORO", "COMBO_TRIPLE");
     public static final List<String> ENEMY_ATTACKS = List.of("TACKLE", "SLASH", "FIREBALL");
 
     public BattleStartResult startBattle(String playerName, String enemyName) {
@@ -81,8 +84,8 @@ public class BattleService {
         Battle battle = battleRepository.findById(battleId);
         if (battle == null || battle.isFinished() || !battle.isPlayerTurn()) return;
 
-        Attack attack = combatEngine.createAttack(attackName);
-        int damage = combatEngine.calculateDamage(battle.getPlayer(), battle.getEnemy(), attack);
+        Attack attack = buildAttackFromUnit(attackName, battle.getPlayer(), battle.getEnemy());
+        int damage = calculateDamageFromUnit(attackName, battle.getPlayer(), battle.getEnemy());
         executeAttackCommand(battleId, battle, battle.getPlayer(), battle.getEnemy(), damage, attack);
     }
 
@@ -90,9 +93,32 @@ public class BattleService {
         Battle battle = battleRepository.findById(battleId);
         if (battle == null || battle.isFinished() || battle.isPlayerTurn()) return;
 
-        Attack attack = combatEngine.createAttack(attackName != null ? attackName : "TACKLE");
-        int damage = combatEngine.calculateDamage(battle.getEnemy(), battle.getPlayer(), attack);
+        String selectedAttack = attackName != null ? attackName : "TACKLE";
+        Attack attack = buildAttackFromUnit(selectedAttack, battle.getEnemy(), battle.getPlayer());
+        int damage = calculateDamageFromUnit(selectedAttack, battle.getEnemy(), battle.getPlayer());
         executeAttackCommand(battleId, battle, battle.getEnemy(), battle.getPlayer(), damage, attack);
+    }
+
+    private Attack buildAttackFromUnit(String attackName, Character attacker, Character defender) {
+        AttackUnit unit = attackUnitFactory.fromKey(attackName);
+        java.util.List<Attack> expanded = unit.expand(combatEngine);
+        if (expanded.size() == 1) {
+            return expanded.get(0);
+        }
+
+        // Para ataques compuestos usamos un contenedor con nombre propio de combo.
+        return new Attack(unit.getName(), 0, Attack.AttackType.NORMAL);
+    }
+
+    private int calculateDamageFromUnit(String attackName, Character attacker, Character defender) {
+        AttackUnit unit = attackUnitFactory.fromKey(attackName);
+        java.util.List<Attack> expanded = unit.expand(combatEngine);
+
+        int totalDamage = 0;
+        for (Attack attack : expanded) {
+            totalDamage += combatEngine.calculateDamage(attacker, defender, attack);
+        }
+        return totalDamage;
     }
 
     private void executeAttackCommand(String battleId, Battle battle, Character attacker, Character defender, int damage, Attack attack) {
