@@ -3,6 +3,11 @@ package com.taller.patrones.application;
 import com.taller.patrones.domain.Attack;
 import com.taller.patrones.domain.Battle;
 import com.taller.patrones.domain.Character;
+import com.taller.patrones.application.observer.AnalyticsDamageObserver;
+import com.taller.patrones.application.observer.AuditDamageObserver;
+import com.taller.patrones.application.observer.DamageEvent;
+import com.taller.patrones.application.observer.DamageNotifier;
+import com.taller.patrones.application.observer.RealtimeStatsObserver;
 import com.taller.patrones.infrastructure.combat.CombatEngine;
 import com.taller.patrones.infrastructure.persistence.BattleRepository;
 
@@ -18,6 +23,13 @@ public class BattleService {
 
     private final CombatEngine combatEngine = new CombatEngine();
     private final BattleRepository battleRepository = BattleRepository.getInstance();
+    private final DamageNotifier damageNotifier = new DamageNotifier();
+
+    public BattleService() {
+        damageNotifier.subscribe(new AnalyticsDamageObserver());
+        damageNotifier.subscribe(new AuditDamageObserver());
+        damageNotifier.subscribe(new RealtimeStatsObserver());
+    }
 
     public static final List<String> PLAYER_ATTACKS = List.of("TACKLE", "SLASH", "FIREBALL", "ICE_BEAM", "POISON_STING", "THUNDER", "METEORO");
     public static final List<String> ENEMY_ATTACKS = List.of("TACKLE", "SLASH", "FIREBALL");
@@ -71,6 +83,15 @@ public class BattleService {
         defender.takeDamage(damage);
         String target = defender == battle.getPlayer() ? "player" : "enemy";
         battle.setLastDamage(damage, target);
+
+        damageNotifier.notifyDamage(new DamageEvent(
+                attacker.getName(),
+                defender.getName(),
+                attack.getName(),
+                damage,
+                target
+        ));
+
         battle.log(attacker.getName() + " usa " + attack.getName() + " y hace " + damage + " de daño a " + defender.getName());
         battle.switchTurn();
         if (!defender.isAlive()) {
