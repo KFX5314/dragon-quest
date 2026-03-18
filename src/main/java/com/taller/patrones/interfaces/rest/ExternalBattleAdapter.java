@@ -23,8 +23,8 @@ public class ExternalBattleAdapter {
             String f2n = (String) body.getOrDefault("fighter2_name", "Dragón");
             int f2hp = ((Number) body.getOrDefault("fighter2_hp", 120)).intValue();
             int f2atk = ((Number) body.getOrDefault("fighter2_atk", 30)).intValue();
-            Character p = new Character.Builder(f1n).maxHp(f1hp).attack(f1atk).defense(10).speed(10).build();
-            Character e = new Character.Builder(f2n).maxHp(f2hp).attack(f2atk).defense(10).speed(10).build();
+            Character p = Character.builder(f1n).maxHp(f1hp).attack(f1atk).defense(10).speed(10).build();
+            Character e = Character.builder(f2n).maxHp(f2hp).attack(f2atk).defense(10).speed(10).build();
             return new Battle(p, e);
         }
         // nuevo proveedor con player.health / player.attack etc.
@@ -37,14 +37,14 @@ public class ExternalBattleAdapter {
             String eName = (String) enemy.getOrDefault("name", "Dragón");
             int eHp = ((Number) enemy.getOrDefault("health", 120)).intValue();
             int eAtk = ((Number) enemy.getOrDefault("attack", 30)).intValue();
-            Character p = new Character.Builder(pName).maxHp(pHp).attack(pAtk).defense(10).speed(10).build();
-            Character e = new Character.Builder(eName).maxHp(eHp).attack(eAtk).defense(10).speed(10).build();
+            Character p = Character.builder(pName).maxHp(pHp).attack(pAtk).defense(10).speed(10).build();
+            Character e = Character.builder(eName).maxHp(eHp).attack(eAtk).defense(10).speed(10).build();
             return new Battle(p, e);
         }
         // formato desconocido -> batalla vacía
         return new Battle(
-                new Character.Builder("Héroe").build(),
-                new Character.Builder("Dragón").build()
+            Character.builder("Héroe").build(),
+            Character.builder("Dragón").build()
         );
     }
 }

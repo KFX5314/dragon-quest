@@ -5,6 +5,11 @@ package com.taller.patrones.domain;
  */
 public class Character {
 
+    private static final int DEFAULT_MAX_HP = 100;
+    private static final int DEFAULT_ATTACK = 10;
+    private static final int DEFAULT_DEFENSE = 5;
+    private static final int DEFAULT_SPEED = 5;
+
     private final String name;
     private int currentHp;
     private final int maxHp;
@@ -12,7 +17,7 @@ public class Character {
     private final int defense;
     private final int speed;
 
-    // campos adicionales opcionales (ejemplos)
+    // Campos opcionales para evolucionar el modelo sin romper el constructor.
     private final String charClass;
     private final String equipment;
     private final String buffs;
@@ -46,6 +51,10 @@ public class Character {
         this.buffs = null;
     }
 
+    public static Builder builder(String name) {
+        return new Builder(name);
+    }
+
     public String getName() { return name; }
     public int getCurrentHp() { return currentHp; }
     public int getMaxHp() { return maxHp; }
@@ -69,16 +78,16 @@ public class Character {
      */
     public static class Builder {
         private final String name;
-        private int maxHp = 100;
-        private int attack = 10;
-        private int defense = 5;
-        private int speed = 5;
+        private int maxHp = DEFAULT_MAX_HP;
+        private int attack = DEFAULT_ATTACK;
+        private int defense = DEFAULT_DEFENSE;
+        private int speed = DEFAULT_SPEED;
         private String charClass;
         private String equipment;
         private String buffs;
 
         public Builder(String name) {
-            this.name = name;
+            this.name = (name == null || name.isBlank()) ? "Aventurero" : name;
         }
 
         public Builder maxHp(int maxHp) { this.maxHp = maxHp; return this; }
@@ -90,6 +99,18 @@ public class Character {
         public Builder buffs(String buffs) { this.buffs = buffs; return this; }
 
         public Character build() {
+            if (maxHp <= 0) {
+                maxHp = DEFAULT_MAX_HP;
+            }
+            if (attack < 0) {
+                attack = DEFAULT_ATTACK;
+            }
+            if (defense < 0) {
+                defense = DEFAULT_DEFENSE;
+            }
+            if (speed < 0) {
+                speed = DEFAULT_SPEED;
+            }
             return new Character(this);
         }
     }
