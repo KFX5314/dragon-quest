@@ -12,8 +12,7 @@ import java.util.UUID;
 /**
  * Caso de uso: gestionar batallas.
  * <p>
- * Nota: Crea sus propias dependencias con new. Cada vez que necesitamos
- * un CombatEngine o BattleRepository, hacemos new aquí.
+ * Nota: Se reutiliza una sola instancia de BattleRepository (singleton).
  */
 public class BattleService {
 
