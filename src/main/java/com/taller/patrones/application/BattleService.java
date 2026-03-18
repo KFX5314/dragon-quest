@@ -3,6 +3,8 @@ package com.taller.patrones.application;
 import com.taller.patrones.domain.Attack;
 import com.taller.patrones.domain.Battle;
 import com.taller.patrones.domain.Character;
+import com.taller.patrones.application.command.AttackBattleCommand;
+import com.taller.patrones.application.command.BattleCommand;
 import com.taller.patrones.application.observer.AnalyticsDamageObserver;
 import com.taller.patrones.application.observer.AuditDamageObserver;
 import com.taller.patrones.application.observer.DamageEvent;
@@ -11,7 +13,11 @@ import com.taller.patrones.application.observer.RealtimeStatsObserver;
 import com.taller.patrones.infrastructure.combat.CombatEngine;
 import com.taller.patrones.infrastructure.persistence.BattleRepository;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -24,6 +30,7 @@ public class BattleService {
     private final CombatEngine combatEngine = new CombatEngine();
     private final BattleRepository battleRepository = BattleRepository.getInstance();
     private final DamageNotifier damageNotifier = new DamageNotifier();
+    private final Map<String, Deque<BattleCommand>> commandHistory = new HashMap<>();
 
     public BattleService() {
         damageNotifier.subscribe(new AnalyticsDamageObserver());
@@ -61,13 +68,22 @@ public class BattleService {
         return battleRepository.findById(battleId);
     }
 
+    public void undoLastAttack(String battleId) {
+        Deque<BattleCommand> history = commandHistory.get(battleId);
+        if (history == null || history.isEmpty()) {
+            return;
+        }
+        BattleCommand command = history.pop();
+        command.undo();
+    }
+
     public void executePlayerAttack(String battleId, String attackName) {
         Battle battle = battleRepository.findById(battleId);
         if (battle == null || battle.isFinished() || !battle.isPlayerTurn()) return;
 
         Attack attack = combatEngine.createAttack(attackName);
         int damage = combatEngine.calculateDamage(battle.getPlayer(), battle.getEnemy(), attack);
-        applyDamage(battle, battle.getPlayer(), battle.getEnemy(), damage, attack);
+        executeAttackCommand(battleId, battle, battle.getPlayer(), battle.getEnemy(), damage, attack);
     }
 
     public void executeEnemyAttack(String battleId, String attackName) {
@@ -76,14 +92,16 @@ public class BattleService {
 
         Attack attack = combatEngine.createAttack(attackName != null ? attackName : "TACKLE");
         int damage = combatEngine.calculateDamage(battle.getEnemy(), battle.getPlayer(), attack);
-        applyDamage(battle, battle.getEnemy(), battle.getPlayer(), damage, attack);
+        executeAttackCommand(battleId, battle, battle.getEnemy(), battle.getPlayer(), damage, attack);
     }
 
-    private void applyDamage(Battle battle, Character attacker, Character defender, int damage, Attack attack) {
-        defender.takeDamage(damage);
-        String target = defender == battle.getPlayer() ? "player" : "enemy";
-        battle.setLastDamage(damage, target);
+    private void executeAttackCommand(String battleId, Battle battle, Character attacker, Character defender, int damage, Attack attack) {
+        BattleCommand command = new AttackBattleCommand(battle, attacker, defender, attack, damage);
+        command.execute();
 
+        commandHistory.computeIfAbsent(battleId, id -> new ArrayDeque<>()).push(command);
+
+        String target = defender == battle.getPlayer() ? "player" : "enemy";
         damageNotifier.notifyDamage(new DamageEvent(
                 attacker.getName(),
                 defender.getName(),
@@ -91,12 +109,6 @@ public class BattleService {
                 damage,
                 target
         ));
-
-        battle.log(attacker.getName() + " usa " + attack.getName() + " y hace " + damage + " de daño a " + defender.getName());
-        battle.switchTurn();
-        if (!defender.isAlive()) {
-            battle.finish(attacker.getName());
-        }
     }
 
     public BattleStartResult startBattleFromExternal(String fighter1Name, int fighter1Hp, int fighter1Atk,
