@@ -4,14 +4,8 @@ import com.taller.patrones.domain.Attack;
 import com.taller.patrones.domain.Character;
 import com.taller.patrones.infrastructure.combat.factory.AttackFactory;
 import com.taller.patrones.infrastructure.combat.factory.InMemoryAttackFactory;
-import com.taller.patrones.infrastructure.combat.strategy.CriticalDamageStrategy;
 import com.taller.patrones.infrastructure.combat.strategy.DamageStrategy;
-import com.taller.patrones.infrastructure.combat.strategy.NormalDamageStrategy;
-import com.taller.patrones.infrastructure.combat.strategy.SpecialDamageStrategy;
-import com.taller.patrones.infrastructure.combat.strategy.StatusDamageStrategy;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.taller.patrones.infrastructure.combat.strategy.DamageStrategyRegistry;
 
 /**
  * Motor de combate. Calcula daño y crea ataques.
@@ -21,30 +15,27 @@ import java.util.Map;
 public class CombatEngine {
 
     private final AttackFactory attackFactory;
+    private final DamageStrategyRegistry strategyRegistry;
 
     public CombatEngine() {
-        this(new InMemoryAttackFactory());
+        this(new InMemoryAttackFactory(), new DamageStrategyRegistry());
     }
 
     public CombatEngine(AttackFactory attackFactory) {
+        this(attackFactory, new DamageStrategyRegistry());
+    }
+
+    public CombatEngine(AttackFactory attackFactory, DamageStrategyRegistry strategyRegistry) {
         this.attackFactory = attackFactory;
+        this.strategyRegistry = strategyRegistry;
     }
 
     public Attack createAttack(String name) {
         return attackFactory.create(name);
     }
 
-    // Estrategias de daño
-    private static final Map<Attack.AttackType, DamageStrategy> DAMAGE_STRATEGIES = new HashMap<>();
-    static {
-        DAMAGE_STRATEGIES.put(Attack.AttackType.NORMAL, new NormalDamageStrategy());
-        DAMAGE_STRATEGIES.put(Attack.AttackType.SPECIAL, new SpecialDamageStrategy());
-        DAMAGE_STRATEGIES.put(Attack.AttackType.STATUS, new StatusDamageStrategy());
-        DAMAGE_STRATEGIES.put(Attack.AttackType.CRITICAL, new CriticalDamageStrategy());
-    }
-
     public int calculateDamage(Character attacker, Character defender, Attack attack) {
-        DamageStrategy strategy = DAMAGE_STRATEGIES.get(attack.getType());
+        DamageStrategy strategy = strategyRegistry.resolve(attack.getType());
         if (strategy == null) return 0;
         return strategy.calculate(attacker, defender, attack);
     }
@@ -54,7 +45,7 @@ public class CombatEngine {
     }
 
     // Para registrar nuevas estrategias de daño
-    public static void registerDamageStrategy(Attack.AttackType type, DamageStrategy strategy) {
-        DAMAGE_STRATEGIES.put(type, strategy);
+    public void registerDamageStrategy(Attack.AttackType type, DamageStrategy strategy) {
+        strategyRegistry.register(type, strategy);
     }
 }
