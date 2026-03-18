@@ -3,10 +3,11 @@ package com.taller.patrones.interfaces.rest;
 import com.taller.patrones.application.BattleService;
 import com.taller.patrones.domain.Battle;
 import com.taller.patrones.domain.Character;
+import com.taller.patrones.interfaces.rest.adapter.ExternalBattleAdapter;
+import com.taller.patrones.interfaces.rest.adapter.ExternalStartBattleRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -15,6 +16,7 @@ import java.util.Map;
 public class BattleController {
 
     private final BattleService battleService = new BattleService(); // BattleRepository ya es singleton
+    private final ExternalBattleAdapter externalBattleAdapter = new ExternalBattleAdapter();
 
     @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> startBattle(@RequestBody(required = false) Map<String, String> body) {
@@ -45,15 +47,14 @@ public class BattleController {
      */
     @PostMapping("/start/external")
     public ResponseEntity<Map<String, Object>> startBattleFromExternal(@RequestBody Map<String, Object> body) {
-        // delegamos la conversión a un adaptador para no ensuciar el controller
-        Battle battle = ExternalBattleAdapter.toBattle(body);
+        ExternalStartBattleRequest request = externalBattleAdapter.adapt(body);
 
         var result = battleService.startBattleFromExternal(
-                battle.getPlayer().getName(), battle.getPlayer().getMaxHp(), battle.getPlayer().getAttack(),
-                battle.getEnemy().getName(), battle.getEnemy().getMaxHp(), battle.getEnemy().getAttack()
+            request.playerName(), request.playerHp(), request.playerAttack(),
+            request.enemyName(), request.enemyHp(), request.enemyAttack()
         );
 
-        battle = result.battle();
+        Battle battle = result.battle();
 
         return ResponseEntity.ok(Map.of(
                 "battleId", result.battleId(),
